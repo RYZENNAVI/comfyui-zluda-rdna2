@@ -23,7 +23,7 @@ Apply the ComfyUI-side changes that gfx1030 + ZLUDA needs.
    ZLUDA DLLs are copied in under the names torch asks for. cublasLt64_11.dll is
    left alone: torch keeps its own build.
 
-Every file is backed up as .gfx1030.bak before its first change. Running this
+Every file is backed up as .rdna2.bak before its first change. Running this
 more than once is harmless.
 
 .PARAMETER ComfyUIRoot
@@ -40,7 +40,7 @@ Write-Host "ComfyUI: $root"
 
 function Backup-Once {
     param([string]$Path)
-    $b = "$Path.gfx1030.bak"
+    $b = "$Path.rdna2.bak"
     if (-not (Test-Path $b)) { Copy-Item $Path $b }
 }
 
@@ -123,7 +123,7 @@ if (-not (Test-Path $bat)) {
     if ($changed) {
         Backup-Once $bat
         [IO.File]::WriteAllLines($bat, $lines, (New-Object Text.UTF8Encoding $false))
-        Write-Host "  comfyui.bat: updated (backup: comfyui.bat.gfx1030.bak)." -ForegroundColor Green
+        Write-Host "  comfyui.bat: updated (backup: comfyui.bat.rdna2.bak)." -ForegroundColor Green
     } else {
         Write-Host "  comfyui.bat: already has the launch flags." -ForegroundColor DarkGray
     }

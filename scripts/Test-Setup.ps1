@@ -50,17 +50,23 @@ if (-not $zdir) { throw "The ZLUDA directory was not found under $root." }
 $zexe = Join-Path $zdir 'zluda.exe'
 if (-not (Test-Path $zexe)) { throw "No zluda.exe in $zdir." }
 
-# Sharing the GPU with a running ComfyUI gives confusing out-of-memory failures.
-# Report it and stop; never kill a process this script did not start.
-# Match on the script being run, not just on the interpreter's location: other
-# things use that venv, and a stray one should not look like a running ComfyUI.
-$busy = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
-          Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($root, 'OrdinalIgnoreCase') -and
-                         $_.CommandLine -match '\bmain\.py\b' })
-if ($busy.Count -gt 0 -and -not $Force) {
-    Write-Host "ComfyUI looks like it is running (PID $($busy[0].ProcessId))." -ForegroundColor Yellow
+# Sharing the GPU with a running ComfyUI turns any result here into guesswork, and
+# an out-of-memory failure looks nothing like the problems this script tests for.
+# Match on main.py as well as the path, so an unrelated script using the same venv
+# is not mistaken for ComfyUI. Never kill a process this script did not start.
+$rootPrefix = $root.TrimEnd('\') + '\'
+$others = @(Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='zluda.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like "*$rootPrefix*" })
+
+$running = @($others | Where-Object { $_.CommandLine -match '\bmain\.py\b' })
+if ($running.Count -gt 0 -and -not $Force) {
+    Write-Host "ComfyUI looks like it is running (PID $(($running.ProcessId) -join ', '))." -ForegroundColor Yellow
     Write-Host "Close it first so the two do not fight over VRAM, or pass -Force." -ForegroundColor Yellow
     exit 1
+}
+if ($others.Count -gt $running.Count) {
+    # A stuck probe from an earlier run can sit here holding VRAM for a long time.
+    Write-Host "Note: $($others.Count - $running.Count) other process(es) are using this install (PID $((($others | Where-Object { $_.CommandLine -notmatch '\bmain\.py\b' }).ProcessId) -join ', ')). They may still be holding VRAM." -ForegroundColor Yellow
 }
 
 $code = @'
@@ -100,7 +106,7 @@ except Exception as e:
     fail.append(("matmul fp16", e))
     print("matmul fp16  FAILED:", e)
 
-# convolution: blows up here when cuDNN was not disabled
+# convolution: the VAE and UNet path
 try:
     x = torch.randn(1, 4, 64, 64, device="cuda", dtype=torch.float16)
     w = torch.randn(8, 4, 3, 3, device="cuda", dtype=torch.float16)
@@ -131,13 +137,13 @@ if fail:
 else:
     print("All checks passed; this GPU can run ComfyUI.")
 
-print("__GFX1030_DONE__ %d" % rc)
+print("__RDNA2_DONE__ %d" % rc)
 sys.stdout.flush()
 os._exit(rc)
 '@
 
-$tmp = Join-Path $env:TEMP "gfx1030-selftest-$PID.py"
-$log = Join-Path $env:TEMP "gfx1030-selftest-$PID.log"
+$tmp = Join-Path $env:TEMP "rdna2-selftest-$PID.py"
+$log = Join-Path $env:TEMP "rdna2-selftest-$PID.log"
 Set-Content -Path $tmp -Value $code -Encoding UTF8
 
 $env:PYTHONIOENCODING = 'utf-8'
@@ -159,7 +165,7 @@ $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Milliseconds 500
     if (Test-Path $log) {
-        $m = Select-String -Path $log -Pattern '^__GFX1030_DONE__ (\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
+        $m = Select-String -Path $log -Pattern '^__RDNA2_DONE__ (\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($m) { $rc = [int]$m.Matches[0].Groups[1].Value; break }
     }
     if ($p.HasExited) { $rc = $p.ExitCode; break }
@@ -172,7 +178,7 @@ for ($i = 0; $i -lt 20 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds
 if (-not $p.HasExited) { Stop-ProcessTree -Id $p.Id }
 
 if (Test-Path $log) {
-    Get-Content $log -Encoding UTF8 | Where-Object { $_ -notmatch '^__GFX1030_DONE__' } | ForEach-Object { Write-Host $_ }
+    Get-Content $log -Encoding UTF8 | Where-Object { $_ -notmatch '^__RDNA2_DONE__' } | ForEach-Object { Write-Host $_ }
 }
 if ((Test-Path "$log.err") -and (Get-Item "$log.err").Length -gt 0) {
     Write-Host "--- stderr ---" -ForegroundColor DarkGray

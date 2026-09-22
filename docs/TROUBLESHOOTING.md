@@ -18,7 +18,8 @@ Look up what you are seeing. For most problems `scripts\Check-Environment.ps1` p
 | The first generation hangs for ten minutes or more | Expected. ZLUDA is JIT-compiling kernels | Wait. They are cached in `%LOCALAPPDATA%\ZLUDA\ComputeCache` and later runs are fast |
 | The screen goes black and recovers, event 4101 "display driver stopped responding", sometimes a hard hang | Something called SDPA with the mem-efficient backend left enabled | Disable that backend, the way `zluda-default.py` does. See "The mem-efficient attention backend resets the display driver" below |
 | `FATAL: kernel ... is for sm80-sm100, but was built for sm37`, repeated endlessly | Same thing: the mem-efficient CUTLASS kernel | Same as above |
-| `no kernel image is available for execution` | Unexpected on gfx1030, which ships with kernels. The HIP install is stripped or broken | Reinstall the HIP SDK. Do not go looking for kernel packs; this card does not need them |
+| `no kernel image is available for execution`<br>or `hipErrorNoBinaryForGpu`, **on gfx1031** | Official rocBLAS ships no gfx1031 kernels at all | `scripts\Install-Kernels.ps1` |
+| The same error **on gfx1030** | Unexpected: this architecture ships with kernels, so the HIP install is stripped or broken | Reinstall the HIP SDK. Do not go looking for kernel packs; this card does not need them |
 | HIP is installed but behaves as if it is not | Several versions installed with the wrong PATH order, or a user-scope environment variable shadowing the machine scope | See "Several HIP versions side by side" below |
 
 ## The awkward details
@@ -116,6 +117,29 @@ The table above took three wrong conclusions and three forced reboots to produce
 - **The exit path is not the variable.** `os._exit` skipping CUDA context teardown looks like an obvious suspect and is not one: a clean exit resets the driver just the same, and a force-kill does not reset it when no SDPA was involved. Do not spend a round on it.
 
 A reset recovers on its own more often than not, but two of the three here hung hard enough to need the power button. Save your work first.
+
+### Kernels: the one place the two architectures differ
+
+gfx1030 is on the official AMD ROCm support list and stock rocBLAS ships its kernels: a clean ROCm 6.4 install has 88 gfx1030 files in `bin\rocblas\library`. Nothing to do, and `Install-Kernels.ps1` refuses to run without `-Force`. Rewriting a shipped, working rocBLAS buys nothing and can only break it.
+
+gfx1031 is not on that list, and official rocBLAS ships **no kernels for it at all**, so the first matmul dies with `no kernel image is available`. `scripts\Install-Kernels.ps1` fills the gap, two ways:
+
+|  | Borrow (default) | Download |
+|---|---|---|
+| Network needed | no | yes |
+| Third-party binaries | none | yes (upstream is GPL-3.0) |
+| Works | yes, gfx1030 and gfx1031 are ISA-compatible | yes |
+| Performance | tuning parameters were chosen for gfx1030 | compiled for actual gfx1031 |
+
+Start with Borrow to get a working setup, switch to Download if it feels slow. Download mode replaces the rocBLAS library outright and keeps the original as `library.bak` next to it.
+
+#### Why `.dat` needs an equal-length replacement
+
+Borrow mode renames gfx1030 kernels to gfx1031. `.dat` files are rocBLAS binary manifests with hardcoded offsets, and `gfx1030` and `gfx1031` happen to be the same 7 bytes long, so the only safe edit is **overwriting those 7 bytes in place**. A text-mode replacement, or a rename to anything of a different length, corrupts the structure, and rocBLAS then fails to load with no useful diagnostic.
+
+`.hsaco` and `.co` files are compiled code objects. Same ISA, so the contents are fine as they are and only the filename changes.
+
+The naming is not consistent either: most files are `..._gfx1030.xxx`, but `Kernels.so-000-gfx1030.hsaco` uses a hyphen. Matching on `_gfx1030` alone silently skips it, along with every `.co` file.
 
 ### HIP SDK installed, but `bin` has no `amdhip64.dll`
 

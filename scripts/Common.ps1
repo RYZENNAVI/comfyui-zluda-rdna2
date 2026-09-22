@@ -2,6 +2,20 @@
 
 $ErrorActionPreference = 'Stop'
 
+# More accurate than an admin check: HIP under Program Files needs elevation,
+# a portable install elsewhere does not.
+function Assert-Writable {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $probe = Join-Path $Path ".write-probe-$PID"
+    try {
+        [IO.File]::WriteAllText($probe, '')
+        Remove-Item $probe -Force
+    } catch {
+        throw "Cannot write to $Path. If it lives under Program Files, reopen PowerShell as Administrator."
+    }
+}
+
 # Describe one HIP root. Returns $null when there is no bin directory.
 function Get-HipInstall {
     param([Parameter(Mandatory)][string]$Root)
@@ -118,11 +132,70 @@ function Get-AmdGpuNames {
         Select-Object -ExpandProperty Name
 }
 
-# This project targets gfx1030: the Navi 21 desktop parts. RX 6800M and
-# RX 6850M XT are Navi 22 despite the model number, so exclude mobile suffixes.
+# Navi 21 desktop parts. RX 6800M and RX 6850M XT are Navi 22 despite the model
+# number, so exclude the mobile suffixes.
 function Test-IsGfx1030 {
     param([string[]]$GpuNames)
     [bool]($GpuNames | Where-Object { $_ -match '6950|6900|6800' -and $_ -notmatch '6800M|6800S|6850M' })
+}
+
+# Navi 22 desktop parts: RX 6700 / 6700 XT / 6750 XT. The mobile Navi 22 chips
+# (RX 6800M, RX 6850M XT) are deliberately left out of both tests rather than
+# claimed here: nobody has run this on one, so they fall through to the
+# "not covered" path instead of being told they are supported.
+function Test-IsGfx1031 {
+    param([string[]]$GpuNames)
+    [bool]($GpuNames | Where-Object { $_ -match '6700|6750' })
+}
+
+# Which architecture this machine is, or $null when it is neither. The two differ
+# in exactly one place: gfx1030 is on the official ROCm support list and stock
+# rocBLAS ships its kernels, gfx1031 is not and needs them installed.
+function Get-GpuArch {
+    param([string[]]$GpuNames)
+
+    if (-not $GpuNames) { $GpuNames = @(Get-AmdGpuNames) }
+    if (Test-IsGfx1030 $GpuNames) { return 'gfx1030' }
+    if (Test-IsGfx1031 $GpuNames) { return 'gfx1031' }
+    $null
+}
+
+# Upstream kernel packs are all .7z. The bundled tar.exe recognises the container
+# but ships without an LZMA decoder, and Expand-Archive only handles zip, so .7z
+# needs an installed 7-Zip.
+function Expand-KernelPack {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Destination
+    )
+
+    New-Item -ItemType Directory $Destination -Force | Out-Null
+
+    if ([IO.Path]::GetExtension($Path) -eq '.zip') {
+        Expand-Archive -Path $Path -DestinationPath $Destination -Force
+        return $Destination
+    }
+
+    $exe = Get-Command 7z.exe -ErrorAction SilentlyContinue
+    if ($exe) {
+        $exe = $exe.Source
+    } else {
+        foreach ($c in @("$env:ProgramFiles\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe")) {
+            if (Test-Path $c) { $exe = $c; break }
+        }
+    }
+
+    if (-not $exe) {
+        throw @"
+Extracting $([IO.Path]::GetFileName($Path)) needs 7-Zip, which was not found. Either:
+  - install 7-Zip from https://www.7-zip.org/ and re-run, or
+  - extract it yourself and pass the extracted directory with -PackPath
+"@
+    }
+
+    & $exe x $Path "-o$Destination" -y | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "7-Zip failed (exit $LASTEXITCODE) on $Path" }
+    $Destination
 }
 
 # Windows does not reap children when the parent dies. zluda.exe injects via

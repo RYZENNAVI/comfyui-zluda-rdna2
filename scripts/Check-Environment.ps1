@@ -26,12 +26,14 @@ function Fix  ($m) { Write-Host "         -> $m" -ForegroundColor DarkGray }
 Write-Host ""
 Write-Host "=== 1. GPU ==="
 $gpus = @(Get-AmdGpuNames)
+$arch = Get-GpuArch $gpus
 if ($gpus.Count -eq 0) {
     Bad "No AMD GPU detected."
 } else {
     $gpus | ForEach-Object { Write-Host "  $_" }
-    if (Test-IsGfx1030 $gpus) { Ok "This is a gfx1030 (Navi 21), which is what this project is for." }
-    else { Warn "Does not look like a gfx1030 (RX 6950 XT / 6900 XT / 6800 XT / 6800). These scripts may not apply." }
+    if ($arch -eq 'gfx1030')     { Ok "This is a gfx1030 (Navi 21). Stock rocBLAS ships its kernels." }
+    elseif ($arch -eq 'gfx1031') { Ok "This is a gfx1031 (Navi 22). Its rocBLAS kernels have to be installed." }
+    else { Warn "Not a desktop RDNA2 card this project covers (RX 6950/6900/6800 XT, RX 6700/6750 XT). These scripts may not apply." }
 }
 
 Write-Host ""
@@ -114,9 +116,15 @@ if (-not $root) {
 }
 
 Write-Host ""
-Write-Host "=== 5. gfx1030 kernels in rocBLAS ==="
-# gfx1030 is officially supported, so stock rocBLAS ships these. This section
-# exists to catch a stripped or half-installed HIP, not to prompt an install.
+$want = $arch
+if (-not $want) { $want = 'gfx1030' }   # nothing better to look for
+Write-Host "=== 5. $want kernels in rocBLAS ==="
+# This is the one place the two architectures differ. gfx1030 is on the official
+# ROCm support list and stock rocBLAS ships its kernels, so an absence there means
+# a broken HIP install. gfx1031 is not, so an absence is expected until they are
+# installed. Match on the bare architecture string: most files are named
+# ..._gfx1031.xxx, but Kernels.so-000-gfx1031.hsaco uses a hyphen, and matching on
+# an underscore silently skips it along with every .co code object.
 foreach ($h in $hips) {
     if (-not $h.Runtime) { continue }   # section 2 already reported this one as broken
     if (-not (Test-Path $h.RocBlasLib)) {
@@ -125,11 +133,18 @@ foreach ($h in $hips) {
         continue
     }
     $n = @(Get-ChildItem $h.RocBlasLib -Recurse -File -ErrorAction SilentlyContinue |
-           Where-Object { $_.Name -like '*gfx1030*' }).Count
-    if ($n -gt 0) { Ok "HIP $($h.Version): $n gfx1030 files, as shipped." }
+           Where-Object { $_.Name -like "*$want*" }).Count
+    if ($n -gt 0) {
+        if ($want -eq 'gfx1030') { Ok "HIP $($h.Version): $n gfx1030 files, as shipped." }
+        else { Ok "HIP $($h.Version): $n gfx1031 files installed." }
+    }
+    elseif ($want -eq 'gfx1031') {
+        Bad "HIP $($h.Version): no gfx1031 kernels, so you will get 'no kernel image is available'."
+        Fix "Run scripts\Install-Kernels.ps1 (-Mode Borrow by default, or -Mode Download for real community kernels)."
+    }
     else {
         Bad "HIP $($h.Version): no gfx1030 kernels, so you will get 'no kernel image is available'."
-        Fix "Unexpected on this GPU. Reinstall the HIP SDK rather than sourcing kernels from elsewhere."
+        Fix "Unexpected on this GPU, which ships with them. Reinstall the HIP SDK rather than sourcing kernels from elsewhere."
     }
 }
 

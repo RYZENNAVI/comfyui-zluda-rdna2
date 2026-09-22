@@ -1,6 +1,8 @@
 # comfyui-zluda-rdna2
 
-Get ComfyUI running under ZLUDA on Windows on an **RX 6950 XT, 6900 XT, 6800 XT, 6800, 6750 XT, 6700 XT or 6700** - every desktop RDNA2 card, gfx1030 and gfx1031 alike.
+Get ComfyUI running under ZLUDA on Windows on a desktop RDNA2 Radeon, gfx1030 and gfx1031 alike.
+
+Everything here was measured on an **RX 6950 XT** (gfx1030) and an **RX 6700 XT** (gfx1031). Those two are the only cards this has run on. The rest of the desktop RDNA2 line - RX 6900 XT, 6800 XT and 6800 on gfx1030, RX 6750 XT and 6700 on gfx1031 - is the same silicon as one of them and should behave identically, but that is extrapolation, not a tested claim. The scripts accept those cards; reports from them are welcome.
 
 This replaces two earlier projects, [comfyui-zluda-gfx1030](https://github.com/RYZENNAVI/comfyui-zluda-gfx1030) and [comfyui-zluda-gfx1031](https://github.com/RYZENNAVI/comfyui-zluda-gfx1031). Both were verified against real hardware, and once the findings were compared, almost everything turned out to be shared.
 
@@ -55,13 +57,15 @@ Run as Administrator on gfx1031 when HIP lives under `Program Files`; the script
 | | gfx1030 | gfx1031 |
 |---|---|---|
 | Card | RX 6950 XT | RX 6700 XT |
-| Display driver | 32.0.21043.19003 | |
-| HIP SDK | 6.4 (`amdhip64_6.dll`) | 6.4 |
+| Display driver | 32.0.21043.19003 | 32.0.21043.19003 |
+| HIP SDK | 6.4 | 6.2 (6.4 and 5.7 also installed) |
 | ZLUDA | 3.9.5 | 3.9.5 |
-| Python | 3.11.9 | |
+| Python | 3.11.9 | 3.11.9 |
 | torch | 2.7.0+cu118 | 2.7.0+cu118 |
 
-Launch flags used on the gfx1030 machine: `--use-quad-cross-attention --reserve-vram 0.9 --disable-async-offload --disable-pinned-memory`
+Launch flags: `--use-quad-cross-attention --reserve-vram 0.9 --disable-async-offload --disable-pinned-memory` on both, plus `--disable-mmap` on the gfx1031 machine.
+
+The gfx1031 machine has three HIP versions installed side by side and PATH order picks 6.2, which is why `Check-Environment.ps1` reports on all of them rather than assuming one.
 
 ## When something breaks
 

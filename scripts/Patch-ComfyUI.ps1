@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Apply the ComfyUI-side changes that gfx1030 + ZLUDA needs.
+Apply the ComfyUI-side changes that RDNA2 + ZLUDA needs.
 
 .DESCRIPTION
 1. comfy\ldm\modules\attention.py

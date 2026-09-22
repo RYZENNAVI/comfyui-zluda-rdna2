@@ -132,20 +132,22 @@ function Get-AmdGpuNames {
         Select-Object -ExpandProperty Name
 }
 
-# Navi 21 desktop parts. RX 6800M and RX 6850M XT are Navi 22 despite the model
-# number, so exclude the mobile suffixes.
+# Mobile RDNA2 parts carry an M or S suffix and do not map onto the desktop model
+# numbers: RX 6800M and RX 6850M XT are Navi 22, RX 6800S and RX 6700S are Navi 23.
+# None has been run on, so both tests exclude them and let them fall through to the
+# "not covered" path rather than claiming support by accident.
+$script:MobileRdna2 = '6[0-9]{3}\s*(M|S)\b'
+
+# Navi 21 desktop parts: RX 6950 XT, 6900 XT, 6800 XT, 6800.
 function Test-IsGfx1030 {
     param([string[]]$GpuNames)
-    [bool]($GpuNames | Where-Object { $_ -match '6950|6900|6800' -and $_ -notmatch '6800M|6800S|6850M' })
+    [bool]($GpuNames | Where-Object { $_ -match '6950|6900|6800' -and $_ -notmatch $script:MobileRdna2 })
 }
 
-# Navi 22 desktop parts: RX 6700 / 6700 XT / 6750 XT. The mobile Navi 22 chips
-# (RX 6800M, RX 6850M XT) are deliberately left out of both tests rather than
-# claimed here: nobody has run this on one, so they fall through to the
-# "not covered" path instead of being told they are supported.
+# Navi 22 desktop parts: RX 6700, 6700 XT, 6750 XT.
 function Test-IsGfx1031 {
     param([string[]]$GpuNames)
-    [bool]($GpuNames | Where-Object { $_ -match '6700|6750' })
+    [bool]($GpuNames | Where-Object { $_ -match '6700|6750' -and $_ -notmatch $script:MobileRdna2 })
 }
 
 # Which architecture this machine is, or $null when it is neither. The two differ

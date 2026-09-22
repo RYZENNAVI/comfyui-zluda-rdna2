@@ -49,6 +49,7 @@ Run as Administrator on gfx1031 when HIP lives under `Program Files`; the script
 - Windows 10/11
 - A desktop RDNA2 Radeon. Mobile RDNA2 (RX 6800M, RX 6850M XT) is untested and the scripts will say so rather than pretend; reports welcome.
 - A working [ComfyUI-Zluda](https://github.com/patientx/ComfyUI-Zluda) install
+- **ZLUDA from [lshqqytiger/ZLUDA](https://github.com/lshqqytiger/ZLUDA)**, which is what ComfyUI-Zluda downloads for you. This matters: several projects are called ZLUDA and their version numbers overlap. The upstream [vosen/ZLUDA](https://github.com/vosen/ZLUDA) is a different codebase and is not what any of this was measured against.
 - HIP SDK for Windows, matching your ZLUDA version: ZLUDA 3.9.5 goes with HIP 6.x, 3.9.6 with HIP 7.x
 - [7-Zip](https://www.7-zip.org/) for `Install-Kernels.ps1 -Mode Download` - upstream packs are `.7z`, which the bundled Windows tools cannot extract
 
@@ -59,13 +60,15 @@ Run as Administrator on gfx1031 when HIP lives under `Program Files`; the script
 | Card | RX 6950 XT | RX 6700 XT |
 | Display driver | 32.0.21043.19003 | 32.0.21043.19003 |
 | HIP SDK | 6.4 | 6.2 (6.4 and 5.7 also installed) |
-| ZLUDA | 3.9.5 | 3.9.5 |
+| ZLUDA | lshqqytiger 3.9.5, nightly, rocm6 build | lshqqytiger 3.9.5 |
 | Python | 3.11.9 | 3.11.9 |
 | torch | 2.7.0+cu118 | 2.7.0+cu118 |
 
 Launch flags: `--use-quad-cross-attention --reserve-vram 0.9 --disable-async-offload --disable-pinned-memory` on both, plus `--disable-mmap` on the gfx1031 machine.
 
 The gfx1031 machine has three HIP versions installed side by side and PATH order picks 6.2, which is why `Check-Environment.ps1` reports on all of them rather than assuming one.
+
+To see which ZLUDA you have, run `zluda.exe --version` in the `zluda` directory of your ComfyUI install; `Check-Environment.ps1` prints it too. ComfyUI-Zluda offers a stable and a nightly build, and a rocm5 and a rocm6 variant; the variant has to match your HIP major version, and the `rocm6` builds are the ones that import `amdhip64_6.dll`. The gfx1030 column above was a nightly rocm6 build. Whether the gfx1031 machine ran a nightly was not recorded, so it is left unsaid rather than guessed.
 
 ## When something breaks
 

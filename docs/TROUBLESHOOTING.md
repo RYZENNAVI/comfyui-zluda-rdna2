@@ -2,6 +2,8 @@
 
 Look up what you are seeing. For most problems `scripts\Check-Environment.ps1` points straight at the cause.
 
+Version numbers below refer to [lshqqytiger/ZLUDA](https://github.com/lshqqytiger/ZLUDA), the fork ComfyUI-Zluda installs. Other projects share the name and the numbering, so check which one you have with `zluda.exe --version` before matching anything against a version here.
+
 ## Error lookup
 
 | Symptom | What is actually wrong | Fix |

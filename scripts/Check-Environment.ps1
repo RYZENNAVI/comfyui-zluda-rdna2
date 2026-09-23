@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Check every part of a gfx1030 + ZLUDA setup that commonly goes wrong.
+Check every part of a desktop RDNA2 + ZLUDA setup that commonly goes wrong.
 
 .DESCRIPTION
 Read-only. Reports what it finds and how to fix it. When something fails, look

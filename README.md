@@ -6,7 +6,7 @@ Everything here was measured on an **RX 6950 XT** (gfx1030) and an **RX 6700 XT*
 
 This replaces two earlier projects, [comfyui-zluda-gfx1030](https://github.com/RYZENNAVI/comfyui-zluda-gfx1030) and [comfyui-zluda-gfx1031](https://github.com/RYZENNAVI/comfyui-zluda-gfx1031). Both were verified against real hardware, and once the findings were compared, almost everything turned out to be shared.
 
-## The one real difference between the two architectures
+## The main difference between the two architectures
 
 **Kernels.** gfx1030 (Navi 21) is on the official AMD ROCm support list, so stock rocBLAS already ships its kernels - a clean ROCm 6.4 install has 88 of them. gfx1031 (Navi 22) is not, and official rocBLAS ships none at all, so the first matmul dies with `no kernel image is available` until they are installed.
 
@@ -24,6 +24,8 @@ Everything else below applies to both.
 **cuDNN is not on this list**, although guides for RDNA2 under ZLUDA - including earlier versions of these two projects - say convolutions crash unless it is disabled. Measured on both cards, `cudnn.is_available()` returns true and convolutions run fine with it enabled. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Usage
+
+This adapts an existing [ComfyUI-Zluda](https://github.com/patientx/ComfyUI-Zluda) install rather than creating one, so set that up first. Full requirements are below.
 
 ```powershell
 git clone https://github.com/RYZENNAVI/comfyui-zluda-rdna2
@@ -64,9 +66,7 @@ Run as Administrator on gfx1031 when HIP lives under `Program Files`; the script
 | Python | 3.11.9 | 3.11.9 |
 | torch | 2.7.0+cu118 | 2.7.0+cu118 |
 
-Launch flags: `--use-quad-cross-attention --reserve-vram 0.9 --disable-async-offload --disable-pinned-memory` on both, plus `--disable-mmap` on the gfx1031 machine.
-
-The gfx1031 machine has three HIP versions installed side by side and PATH order picks 6.2, which is why `Check-Environment.ps1` reports on all of them rather than assuming one.
+Launch flags. `Patch-ComfyUI.ps1` adds `--disable-async-offload --disable-pinned-memory` for you, and both machines ran with them. The rest was the operator's own choice: `--use-quad-cross-attention --reserve-vram 0.9` on both, and `--disable-mmap` on the gfx1031 machine, which needed it to load large models.
 
 To see which ZLUDA you have, run `zluda.exe --version` in the `zluda` directory of your ComfyUI install; `Check-Environment.ps1` prints it too. ComfyUI-Zluda offers a stable and a nightly build, and a rocm5 and a rocm6 variant; the variant has to match your HIP major version, and the `rocm6` builds are the ones that import `amdhip64_6.dll`. The gfx1030 column above was a nightly rocm6 build. Whether the gfx1031 machine ran a nightly was not recorded, so it is left unsaid rather than guessed.
 

@@ -3,9 +3,10 @@
 Download a community-built gfx1031 rocBLAS kernel pack, returning its path.
 
 .DESCRIPTION
-This project does not redistribute those binaries - upstream is GPL-3.0, and
+This project does not redistribute those binaries. Upstream is GPL-3.0, and
 redistributing would carry the corresponding obligations. The script fetches
-them from upstream at install time instead, which also picks up their updates.
+them from upstream at install time instead. It takes the first matching pack
+and checks no hash, so the pack can change between installs.
 
 Sources, tried in order:
   1. likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU  published as release assets
@@ -29,7 +30,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$gh = @{ 'User-Agent' = 'comfyui-zluda-gfx1031'; 'Accept' = 'application/vnd.github+json' }
+$gh = @{ 'User-Agent' = 'comfyui-zluda-rdna2'; 'Accept' = 'application/vnd.github+json' }
 
 # Asset names spell the version every which way: "hip.6.4.2", "hip sdk 6.2.4",
 # "rocm 6.2.4", "hip6.2". Match major.minor only, with a loose separator.

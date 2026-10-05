@@ -25,7 +25,7 @@ function Get-HipInstall {
     if (-not (Test-Path $bin)) { return $null }
 
     # The HIP SDK installer sometimes skips the core runtime, leaving bin without
-    # any amdhip64*.dll. Report that honestly instead of pretending it installed.
+    # any amdhip64*.dll. Report it instead of treating the install as complete.
     $rt = Get-ChildItem $bin -Filter 'amdhip64*.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
 
     [pscustomobject]@{

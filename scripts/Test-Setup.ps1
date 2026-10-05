@@ -43,7 +43,7 @@ $root = Find-ComfyUIRoot -Hint $ComfyUIRoot
 if (-not $root) { throw "ComfyUI root not found. Pass -ComfyUIRoot." }
 
 $py = Join-Path $root 'venv\Scripts\python.exe'
-if (-not (Test-Path $py)) { throw "No $py - the ComfyUI venv is not set up." }
+if (-not (Test-Path $py)) { throw "No $py. The ComfyUI venv is not set up." }
 
 $zdir = Find-ZludaDir -ComfyUIRoot $root
 if (-not $zdir) { throw "The ZLUDA directory was not found under $root." }
@@ -66,7 +66,9 @@ if ($running.Count -gt 0 -and -not $Force) {
 }
 if ($others.Count -gt $running.Count) {
     # A stuck probe from an earlier run can sit here holding VRAM for a long time.
-    Write-Host "Note: $($others.Count - $running.Count) other process(es) are using this install (PID $((($others | Where-Object { $_.CommandLine -notmatch '\bmain\.py\b' }).ProcessId) -join ', ')). They may still be holding VRAM." -ForegroundColor Yellow
+    $extra = @($others | Where-Object { $_.CommandLine -notmatch '\bmain\.py\b' })
+    if ($extra.Count -eq 1) { $what = 'other process is'; $they = 'It' } else { $what = 'other processes are'; $they = 'They' }
+    Write-Host "Note: $($extra.Count) $what using this install (PID $(($extra.ProcessId) -join ', ')). $they may still be holding VRAM." -ForegroundColor Yellow
 }
 
 $code = @'
@@ -135,7 +137,7 @@ if fail:
     print("%d of 3 checks failed." % len(fail))
     rc = 1
 else:
-    print("All checks passed; this GPU can run ComfyUI.")
+    print("All three checks passed.")
 
 print("__RDNA2_DONE__ %d" % rc)
 sys.stdout.flush()

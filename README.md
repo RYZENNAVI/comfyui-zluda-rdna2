@@ -2,13 +2,13 @@
 
 Get ComfyUI running under ZLUDA on Windows on a desktop RDNA2 Radeon, gfx1030 and gfx1031 alike.
 
-Everything here was measured on an **RX 6950 XT** (gfx1030) and an **RX 6700 XT** (gfx1031). Those two are the only cards this has run on. The rest of the desktop RDNA2 line - RX 6900 XT, 6800 XT and 6800 on gfx1030, RX 6750 XT and 6700 on gfx1031 - is the same silicon as one of them and should behave identically, but that is extrapolation, not a tested claim. The scripts accept those cards; reports from them are welcome.
+Everything here was measured on an **RX 6950 XT** (gfx1030) and an **RX 6700 XT** (gfx1031). Those two are the only cards this has run on. The rest of the desktop RDNA2 line (RX 6900 XT, 6800 XT and 6800 on gfx1030, RX 6750 XT and 6700 on gfx1031) is the same silicon as one of them and should behave identically, but that is extrapolation, not a tested claim. The scripts accept those cards; reports from them are welcome.
 
 This replaces two earlier projects, [comfyui-zluda-gfx1030](https://github.com/RYZENNAVI/comfyui-zluda-gfx1030) and [comfyui-zluda-gfx1031](https://github.com/RYZENNAVI/comfyui-zluda-gfx1031). Both were verified against real hardware, and once the findings were compared, almost everything turned out to be shared.
 
 ## The main difference between the two architectures
 
-**Kernels.** gfx1030 (Navi 21) is on the official AMD ROCm support list, so stock rocBLAS already ships its kernels - a clean ROCm 6.4 install has 88 of them. gfx1031 (Navi 22) is not, and official rocBLAS ships none at all, so the first matmul dies with `no kernel image is available` until they are installed.
+**Kernels.** gfx1030 (Navi 21) is on the official AMD ROCm support list, so stock rocBLAS already ships its kernels: a clean ROCm 6.4 install has 88 of them. gfx1031 (Navi 22) is not, and official rocBLAS ships none at all, so the first matmul dies with `no kernel image is available` until they are installed.
 
 `install.ps1` detects which card you have and runs three steps or four accordingly. If you followed a guide written for the other architecture and started hunting for kernel packs on a 6950 XT, stop: that is not your problem.
 
@@ -21,7 +21,7 @@ Everything else below applies to both.
 3. **The mem-efficient attention backend resets the display driver.** Its CUTLASS kernel is built for an SM version that does not match, so one SDPA call floods `FATAL: kernel ... is for sm80-sm100, but was built for sm37` and takes the driver down. ComfyUI disables that backend for you; the danger is in scripts that call SDPA without doing the same. Measured on both architectures, with one difference: gfx1031 recovers by itself, while on gfx1030 two of three resets needed the power button.
 4. **The launcher overwrites the file you just patched.** `comfyui.bat` copies `comfy\customzluda\zluda-default.py` over `comfy\zluda.py` on every launch, and `comfy\model_management.py` imports `comfy.zluda`. Edit the default, not the copy.
 
-**cuDNN is not on this list**, although guides for RDNA2 under ZLUDA - including earlier versions of these two projects - say convolutions crash unless it is disabled. Measured on both cards, `cudnn.is_available()` returns true and convolutions run fine with it enabled. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+**cuDNN is not on this list**, although guides for RDNA2 under ZLUDA (including earlier versions of these two projects) say convolutions crash unless it is disabled. Measured on both cards, `cudnn.is_available()` returns true and convolutions run fine with it enabled. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Usage
 
@@ -30,8 +30,11 @@ This adapts an existing [ComfyUI-Zluda](https://github.com/patientx/ComfyUI-Zlud
 ```powershell
 git clone https://github.com/RYZENNAVI/comfyui-zluda-rdna2
 cd comfyui-zluda-rdna2
+Set-ExecutionPolicy -Scope Process Bypass
 .\install.ps1
 ```
+
+Windows blocks PowerShell scripts by default. The third line allows them for this window only, and the individual steps below need it too.
 
 Run as Administrator on gfx1031 when HIP lives under `Program Files`; the scripts check whether they can write and say so if not. Reopen your terminal afterwards, then launch ComfyUI as usual.
 
@@ -53,7 +56,7 @@ Run as Administrator on gfx1031 when HIP lives under `Program Files`; the script
 - A working [ComfyUI-Zluda](https://github.com/patientx/ComfyUI-Zluda) install
 - **ZLUDA from [lshqqytiger/ZLUDA](https://github.com/lshqqytiger/ZLUDA)**, which is what ComfyUI-Zluda downloads for you. This matters: several projects are called ZLUDA and their version numbers overlap. The upstream [vosen/ZLUDA](https://github.com/vosen/ZLUDA) is a different codebase and is not what any of this was measured against.
 - HIP SDK for Windows, matching your ZLUDA version: ZLUDA 3.9.5 goes with HIP 6.x, 3.9.6 with HIP 7.x
-- [7-Zip](https://www.7-zip.org/) for `Install-Kernels.ps1 -Mode Download` - upstream packs are `.7z`, which the bundled Windows tools cannot extract
+- [7-Zip](https://www.7-zip.org/) for `Install-Kernels.ps1 -Mode Download`. Upstream packs are `.7z`, which the bundled Windows tools cannot extract
 
 ### Configurations known to work
 
@@ -80,5 +83,7 @@ Run `.\scripts\Check-Environment.ps1` first, then look the error up in **[docs/T
 
 - [likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU](https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU)
 - [brknsoul/ROCmLibs](https://github.com/brknsoul/ROCmLibs)
+
+`Get-KernelPack.ps1` takes the first matching pack that upstream lists at install time. It pins no version and checks no hash, so two installs can get different binaries; look at what it downloaded before installing it.
 
 **This repository redistributes none of those binaries.** They are GPL-3.0, and redistributing them would carry the corresponding obligations. The scripts only help you download them from upstream; whether to install them is your call. The scripts in this repository are MIT.

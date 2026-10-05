@@ -77,8 +77,8 @@ from torch.backends.cuda import SDPAParams, can_use_flash_attention, can_use_eff
 q = torch.randn(1, 8, 256, 64, device="cuda", dtype=torch.float16)
 p = SDPAParams(q, q, q, None, 0.0, False, False)
 print(torch.cuda.get_device_capability(0))      # (8, 8)
-print(can_use_flash_attention(p, False))        # False - never selected
-print(can_use_efficient_attention(p, False))    # True  - this is the broken one
+print(can_use_flash_attention(p, False))        # False: never selected
+print(can_use_efficient_attention(p, False))    # True: this is the broken one
 ```
 
 So the rule is narrow: **disable the mem-efficient backend and SDPA is fine.** That is exactly what `zluda-default.py` already does for you:
@@ -159,9 +159,9 @@ Several versions live there, and you **must pick the one matching your installed
 
 Three things have to line up, and any one of them being wrong breaks everything:
 
-1. **PATH order** - the `bin` directory of the version you want has to come first.
-2. **`HIP_PATH`** - note that a **user-scope variable overrides the machine scope**. The installer writes the machine scope, so a user-scope value you set by hand silently wins. This one is easy to miss.
-3. **The ZLUDA major version** - see the error table above.
+1. **PATH order.** The `bin` directory of the version you want has to come first.
+2. **`HIP_PATH`.** A **user-scope variable overrides the machine scope**. The installer writes the machine scope, so a user-scope value you set by hand silently wins. This one is easy to miss.
+3. **The ZLUDA major version.** See the error table above.
 
 `Check-Environment.ps1` checks all three.
 

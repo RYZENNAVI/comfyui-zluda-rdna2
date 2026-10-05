@@ -33,7 +33,7 @@ if ($gpus.Count -eq 0) {
     $gpus | ForEach-Object { Write-Host "  $_" }
     if ($arch -eq 'gfx1030')     { Ok "This is a gfx1030 (Navi 21). Stock rocBLAS ships its kernels." }
     elseif ($arch -eq 'gfx1031') { Ok "This is a gfx1031 (Navi 22). Its rocBLAS kernels have to be installed." }
-    else { Warn "Not a desktop RDNA2 card this project covers (RX 6950/6900/6800 XT, RX 6700/6750 XT). These scripts may not apply." }
+    else { Warn "Not a desktop RDNA2 card this project covers (RX 6950 XT, 6900 XT, 6800 XT, 6800, 6750 XT, 6700 XT, 6700). These scripts may not apply." }
 }
 
 Write-Host ""
@@ -153,7 +153,7 @@ Write-Host "=== 6. ZLUDA DLLs in torch\lib ==="
 if ($root -and $zdir) {
     $torchLib = Join-Path $root 'venv\Lib\site-packages\torch\lib'
     if (-not (Test-Path $torchLib)) {
-        Warn "No torch\lib at $torchLib - the ComfyUI venv is not set up."
+        Warn "No torch\lib at $torchLib. The ComfyUI venv is not set up."
     } else {
         # Python 3.8+ no longer searches PATH for extension-module dependencies,
         # so these have to be copied in under the names torch expects.

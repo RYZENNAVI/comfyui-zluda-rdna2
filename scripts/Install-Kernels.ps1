@@ -10,7 +10,7 @@ Official AMD ROCm ships no gfx1031 rocBLAS kernels, so every matmul dies with
            both RDNA2 and ISA-compatible. No network, no third-party binaries,
            but the tuning parameters were picked for gfx1030.
   Download Replace them with kernels the community actually compiled for
-           gfx1031. Usually faster, needs network access.
+           gfx1031, so they may run faster. Needs network access.
 
 .PARAMETER Mode
 Borrow or Download. Defaults to Borrow.
@@ -24,6 +24,9 @@ extracted directory. Skips the download when given.
 
 .PARAMETER Yes
 Download mode only: skip the confirmation before downloading.
+
+.PARAMETER Force
+Run on gfx1030 as well, where stock rocBLAS already ships the kernels.
 #>
 [CmdletBinding()]
 param(
@@ -41,12 +44,12 @@ param(
 # stock rocBLAS already ships its kernels, so there is nothing to install and
 # rewriting the shipped library would only put the install at risk.
 if ((Get-GpuArch) -eq 'gfx1030' -and -not $Force) {
-    Write-Host "This is a gfx1030 (RX 6950/6900/6800 XT). Stock rocBLAS already ships its kernels," -ForegroundColor Yellow
+    Write-Host "This is a gfx1030 (RX 6950 XT, 6900 XT, 6800 XT, 6800). Stock rocBLAS already ships its kernels," -ForegroundColor Yellow
     Write-Host "so there is nothing to install here. Pass -Force if you really mean to." -ForegroundColor Yellow
     return
 }
 
-# ---- pick the target HIP ----
+# 1. Pick the target HIP
 if ($HipRoot) {
     $hip = Get-HipInstall -Root $HipRoot
     if (-not $hip) { throw "No usable HIP at $HipRoot (no bin directory)." }
@@ -55,19 +58,19 @@ if ($HipRoot) {
     if ($all.Count -eq 0) { throw "No HIP SDK found. Install one first." }
     $hip = $all[0]
     if ($all.Count -gt 1) {
-        Write-Host "Found several HIP installs: $(($all.Version) -join ', ') - using $($hip.Version). Pass -HipRoot to choose." -ForegroundColor Yellow
+        Write-Host "Found several HIP installs: $(($all.Version) -join ', '). Using $($hip.Version); pass -HipRoot to choose." -ForegroundColor Yellow
     }
 }
 
 $LIB = $hip.RocBlasLib
 Write-Host "Target: HIP $($hip.Version)  ->  $LIB"
 if (-not $hip.Runtime) {
-    Write-Host "Note: $($hip.Bin) has no amdhip64*.dll, so this HIP install is incomplete. Kernels alone will not make it run - see Check-Environment.ps1." -ForegroundColor Yellow
+    Write-Host "Note: $($hip.Bin) has no amdhip64*.dll, so this HIP install is incomplete. Kernels alone will not make it run; see Check-Environment.ps1." -ForegroundColor Yellow
 }
-if (-not (Test-Path $LIB)) { throw "No $LIB - this HIP install has no rocBLAS." }
+if (-not (Test-Path $LIB)) { throw "No $LIB. This HIP install has no rocBLAS." }
 Assert-Writable $LIB
 
-# ---- back up ----
+# 2. Back up
 $bak = "$LIB.bak"
 if (-not (Test-Path $bak)) {
     Copy-Item $LIB $bak -Recurse -Force
@@ -78,12 +81,12 @@ if (-not (Test-Path $bak)) {
 
 if ($Mode -eq 'Borrow') {
     # All three kinds matter: .dat are manifests, .hsaco and .co are compiled
-    # code objects. Naming is inconsistent - most are `..._gfx1030.xxx` but
+    # code objects. Naming is inconsistent: most are `..._gfx1030.xxx` but
     # `Kernels.so-000-gfx1030.hsaco` uses a hyphen, so match on the gfx1030
     # substring rather than on an underscore.
     $src = @(Get-ChildItem $LIB -File | Where-Object { $_.Name -like '*gfx1030*' })
     if ($src.Count -eq 0) {
-        throw "No gfx1030 kernels in $LIB to borrow from. This HIP version ships no RDNA2 kernels - use -Mode Download."
+        throw "No gfx1030 kernels in $LIB to borrow from. This HIP version ships no RDNA2 kernels; use -Mode Download."
     }
 
     $old = [System.Text.Encoding]::ASCII.GetBytes('gfx1030')
@@ -95,8 +98,8 @@ if ($Mode -eq 'Borrow') {
 
         if ($f.Extension -eq '.dat') {
             # .dat is a binary manifest with hardcoded offsets. gfx1030 and
-            # gfx1031 are the same length, so overwrite those 7 bytes in place -
-            # a text replace, or any differently sized name, corrupts the file.
+            # gfx1031 are the same length, so overwrite those 7 bytes in place.
+            # A text replace, or any differently sized name, corrupts the file.
             $bytes = [System.IO.File]::ReadAllBytes($f.FullName)
             for ($i = 0; $i -le $bytes.Length - $old.Length; $i++) {
                 $match = $true
@@ -153,4 +156,4 @@ else {
 }
 
 Write-Host ""
-Write-Host "Next: scripts\Test-Setup.ps1 to check matmul and convolution actually run."
+Write-Host "Next: scripts\Test-Setup.ps1 to run matmul, conv2d and SDPA on the GPU."

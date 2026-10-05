@@ -9,8 +9,9 @@ Detects the architecture and runs the steps it needs:
   3. patch ComfyUI           scripts\Patch-ComfyUI.ps1
   4. verify on the GPU       scripts\Test-Setup.ps1
 
-Step 2 is skipped on gfx1030 (RX 6950/6900/6800 XT): that architecture is on the
-official ROCm support list, so stock rocBLAS already ships its kernels.
+Step 2 is skipped on gfx1030 (RX 6950 XT, 6900 XT, 6800 XT, 6800): that
+architecture is on the official ROCm support list, so stock rocBLAS already
+ships its kernels.
 
 Each step also runs on its own. When something fails, look it up in
 docs\TROUBLESHOOTING.md.
@@ -48,7 +49,7 @@ param(
 $gpus = @(Get-AmdGpuNames)
 $arch = Get-GpuArch $gpus
 if (-not $arch) {
-    Write-Host "No desktop RDNA2 GPU detected (RX 6950/6900/6800 XT, RX 6700/6750 XT)." -ForegroundColor Yellow
+    Write-Host "No desktop RDNA2 GPU detected (RX 6950 XT, 6900 XT, 6800 XT, 6800, 6750 XT, 6700 XT, 6700)." -ForegroundColor Yellow
     Write-Host "Found: $($gpus -join ', ')"
     if ((Read-Host "Continue anyway? [y/N]") -notmatch '^[yY]') { return }
     $arch = 'gfx1030'   # the path that installs no kernels

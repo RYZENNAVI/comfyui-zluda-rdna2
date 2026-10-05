@@ -14,8 +14,9 @@ Apply the ComfyUI-side changes that RDNA2 + ZLUDA needs.
    launch, so edits there are silently discarded.
 
 3. comfyui.bat
-   --disable-async-offload and --disable-pinned-memory are known to break ZLUDA
-   setups. --disable-mmap is not added here; it is only needed when loading a
+   Async offload and pinned memory are known to break ZLUDA setups, so both
+   flags that turn them off get added: --disable-async-offload and
+   --disable-pinned-memory. --disable-mmap is not added here; it is only needed when loading a
    large model dies with an access violation.
 
 4. venv\Lib\site-packages\torch\lib
@@ -44,7 +45,7 @@ function Backup-Once {
     if (-not (Test-Path $b)) { Copy-Item $Path $b }
 }
 
-# ---- 1) attention.py ----
+# 1. attention.py
 $att = Join-Path $root 'comfy\ldm\modules\attention.py'
 if (-not (Test-Path $att)) { throw "No $att" }
 
@@ -67,13 +68,13 @@ else:
     Write-Host "  attention.py: added the hasattr guard." -ForegroundColor Green
 }
 
-# ---- 2) the ZLUDA module the launcher actually installs ----
+# 2. The ZLUDA module the launcher installs
 $default = Join-Path $root 'comfy\customzluda\zluda-default.py'
 $target = $default
 if (-not (Test-Path $target)) { $target = Join-Path $root 'comfy\zluda.py' }
 
 if (-not (Test-Path $target)) {
-    Write-Host "  zluda module: not found, skipping the cuDNN change." -ForegroundColor Yellow
+    Write-Host "  zluda module: not found, skipping the attention backend change." -ForegroundColor Yellow
 } else {
     $name = Split-Path $target -Leaf
     $zt = Get-Content $target -Raw
@@ -100,7 +101,7 @@ if (-not (Test-Path $target)) {
     }
 }
 
-# ---- 3) comfyui.bat ----
+# 3. comfyui.bat
 $bat = Join-Path $root 'comfyui.bat'
 if (-not (Test-Path $bat)) {
     Write-Host "  comfyui.bat: not found, skipping the launch flags." -ForegroundColor Yellow
@@ -129,7 +130,7 @@ if (-not (Test-Path $bat)) {
     }
 }
 
-# ---- 4) ZLUDA DLLs into torch\lib ----
+# 4. ZLUDA DLLs into torch\lib
 $zdir = Find-ZludaDir -ComfyUIRoot $root
 $torchLib = Join-Path $root 'venv\Lib\site-packages\torch\lib'
 if (-not $zdir) {
